@@ -5,7 +5,7 @@
 var express  = require('express');
 var app      = express();
 var port     = process.env.PORT || 8080;
-var mongoose = require('mongoose');
+var orm      = require('orm');
 var passport = require('passport');
 var flash    = require('connect-flash');
 
@@ -17,7 +17,13 @@ var session      = require('express-session');
 var configDB = require('./config/database.js');
 
 // configuration ===============================================================
-mongoose.connect(configDB.url); // connect to our database
+app.use(orm.express(configDB.url, {
+  define: function (db, models, next) {
+    db.load("./app/models/user", function (err) { models.user = db.models.user; });
+    db.sync();
+    next();
+  }
+}));
 
 require('./config/passport')(passport); // pass passport for configuration
 
@@ -30,7 +36,11 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.set('view engine', 'ejs'); // set up ejs for templating
 
 // required for passport
-app.use(session({ secret: 'ilovescotchscotchyscotchscotch' })); // session secret
+app.use(session({
+  secret: 'ilovescotchscotchyscotchscotch',
+  saveUninitialized: true,
+  resave: true
+})); // session secret
 app.use(passport.initialize());
 app.use(passport.session()); // persistent login sessions
 app.use(flash()); // use connect-flash for flash messages stored in session
